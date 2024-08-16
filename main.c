@@ -1,7 +1,20 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/XInput2.h>
+#include <X11/extensions/XTest.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+int is_btn_pressed(Display *dpy){
+    Window root, child;
+    int root_x, root_y;
+    int win_x, win_y;
+    unsigned int mask;
+
+    XQueryPointer(dpy, DefaultRootWindow(dpy), &root, &child, &root_x, &root_y, &win_x, &win_y, &mask);
+
+    return (mask & (Button1Mask | Button2Mask | Button3Mask)) != 0;
+}
 
 int main() {
     Display *display;
@@ -47,7 +60,16 @@ int main() {
             XGetEventData(display, cookie)) {
             XIRawEvent *re = (XIRawEvent*)cookie->data;
             if (cookie->evtype == XI_RawButtonPress && re->detail == 2) {
-                printf("Whell click\n");
+                int root_x, root_y;
+                unsigned int mask;
+                XQueryPointer(display, DefaultRootWindow(display), &root, &root, &root_x, &root_y, &root_x, &root_y, &mask);
+                printf("Wheel click at position: x = %d, y = %d\n", root_x, root_y);
+                while(is_btn_pressed(display)) {
+                    XTestFakeButtonEvent(display, Button5, True, CurrentTime);
+                    XTestFakeButtonEvent(display, Button5, False, CurrentTime);
+                    XFlush(display);
+                    usleep(100000);
+                }
             }
             XFreeEventData(display, cookie);
         }
